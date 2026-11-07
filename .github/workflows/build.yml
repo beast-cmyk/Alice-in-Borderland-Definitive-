@@ -2,7 +2,11 @@ name: Build mod jar
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,9 +22,20 @@ jobs:
           gradle-version: 8.14.3
       - name: Build
         run: gradle build --stacktrace
+      - name: Keep only the mod jar
+        run: rm -f build/libs/*-sources.jar
       - uses: actions/upload-artifact@v4
         with:
           name: dead-mans-hand
-          path: |
-            build/libs/*.jar
-            !build/libs/*-sources.jar
+          path: build/libs/*.jar
+      - name: Put the jar on the "jar" branch
+        run: |
+          mkdir out
+          cp build/libs/*.jar out/
+          cd out
+          git init -q -b jar
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Built jar"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" jar
